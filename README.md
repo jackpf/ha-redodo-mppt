@@ -7,6 +7,8 @@ A custom Home Assistant integration for **Redodo MPPT charge controllers**, comm
 
 ---
 
+![image](./docs/images/screenshot1.png)
+
 ## Features
 
 - 14 sensors exposed as native HA entities

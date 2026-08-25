@@ -31,7 +31,7 @@ class MPPTData:
     # --- Unconfirmed: set when POLL_REALTIME succeeds, values uncertain ---
     pv_voltage: float | None = None    # V  (TODO: confirm REG_PV_VOLTAGE)
     pv_current: float | None = None    # A  (TODO: confirm REG_PV_CURRENT)
-    energy_acc: int | None = None      # raw (TODO: confirm unit — Wh?)
+    battery_temp: int | None = None      # raw (TODO: confirm unit — Wh?)
     today_energy: int | None = None    # raw (TODO: confirm unit — Wh?)
     total_ah: int | None = None        # raw (TODO: confirm unit)
     total_discharge: int | None = None     # raw

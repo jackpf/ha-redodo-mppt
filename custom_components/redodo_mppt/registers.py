@@ -26,25 +26,26 @@ REG_RATED_W      = 0x0015  # Rated power?   observed 150 → 150 W   (TODO: conf
 # ---------------------------------------------------------------------------
 
 REG_SOC          = 0x0101  # Battery state of charge (%)
-REG_BATT_VOLTAGE = 0x0102  # Battery voltage  — divide by 10 → V  (observed 132 = 13.2 V)
+REG_BATT_VOLTAGE = 0x0102  # Battery voltage  — divide by 10 → V  (observed 132 = 13.2V)
 
-REG_BATT_CURRENT = 0x0103  # TODO: battery charge/discharge current (÷10 A? ÷100 A?)
-REG_BATT_POWER   = 0x0104  # TODO: battery power (W?)
-REG_ENERGY_ACC   = 0x0105  # TODO: energy accumulator — unit unknown (Wh? ×0.1 kWh?) observed 6169 — could be total lifetime Wh
+REG_CHARGE_CURRENT = 0x0103  # Charge current ÷100 e.g. 457 = 4.57A
+REG_CHARGE_POWER   = 0x0104  # Charge power e.g. 44 = 44W
+REG_BATT_TEMP   = 0x0105  # Battery temperature e.g. 77 = 77 degrees F
 REG_UNK_106      = 0x0106  # Unknown, always 0
 REG_UNK_107      = 0x0107  # Unknown, always 0
 REG_UNK_108      = 0x0108  # Unknown, always 0
-REG_PV_POWER     = 0x0109  # E.g. 445 -> ÷10 = 44.5w
-REG_PV_VOLTAGE   = 0x010A  # TODO: Observed values: 107, 129. Could be either max charging rate (W) or lowest battery voltage (V)
-REG_PV_CURRENT   = 0x010B  # TODO: ACTUALLY Daily charge amount (Wh) e.g. 191 = 191Wh
-REG_UNK_10C      = 0x010C  # Unknown, always 0
+REG_PV_VOLTAGE     = 0x0109  # Solar voltage e.g. 445 ÷10 = 44.5V
+REG_PV_DAILY_MAX_POWER   = 0x010A  # Max solar power e.g. 107 = 107W
+REG_PV_DAILY_CHARGE   = 0x010B  # Daily charge amount e.g. 191 = 191Wh
+REG_UNK_10C      = 0x010C  # Unknown, always 0 (todo: these 3 could be related to discharge - always 0 in my case)
 REG_UNK_10D      = 0x010D  # Unknown, observed values: 0, 2
 REG_UNK_10E      = 0x010E  # Unknown, always 0
-REG_TODAY_ENERGY = 0x010F  # TODO: Actually total days on-time e.g. 269 = 269 days
+REG_DAYS_ON = 0x010F  # Days on-time e.g. 269 = 269 days
 REG_UNK_110      = 0x0110  # Unknown, always 0
-REG_TOTAL_AH     = 0x0111  # TODO: ACTUALLY total kwh charged
+REG_PV_TOTAL_CHARGE     = 0x0111  # TODO: Total Wh charged e.g. 23252 = 23.252KWh
 REG_UNK_112      = 0x0112  # Unknown, always 0
-REG_TOTAL_DISCHARGE  = 0x0113  # Cumulative total discharge amount, e.g. 398 -> 398Wh
+REG_PV_TOTAL_DISCHARGE  = 0x0113  # Cumulative total discharge amount, e.g. 398 -> 398Wh
+# TODO: Poll past 0x0113 to maybe find mppt controller temp
 
 # ---------------------------------------------------------------------------
 # Real-time data — secondary poll block
@@ -53,11 +54,11 @@ REG_TOTAL_DISCHARGE  = 0x0113  # Cumulative total discharge amount, e.g. 398 -> 
 
 # 0x0400 and 0x0402 mirror 0x010B and 0x010A respectively — same values,
 # same uncertainty. 0x0403 mirrors 0x0102 (confirmed battery voltage).
-REG_PV_CURRENT2  = 0x0400  # TODO: ACTUALLY Daily charge amount (mirrors 0x010B)
-REG_UNK_401      = 0x0401  # TODO Actually this is likely daily discharge amount in W (always 0 in my case)
-REG_PV_VOLTAGE2  = 0x0402  # TODO: ACTUALLY This is likely max charging power e.g. 129 = 129W
-REG_BATT_VOLTAGE2= 0x0403  # TODO ACTUALLY Highest daily battery voltage
-REG_OUTPUT_V     = 0x0404  # TODO: ACTUALLY Lowest daily battery voltage
+REG_DAILY_CHARGE  = 0x0400  # Daily charge amount (mirrors 0x010B) e.g. 123 = 123Wh
+REG_DAILY_DISCHARGE      = 0x0401  # Daily discharge amount (always 0 in my case) e.g. 123 = 123Wh
+REG_DAILY_MAX_POWER  = 0x0402  # TODO: ACTUALLY This is likely max charging power e.g. 129 = 129W
+REG_DAILY_BATT_V_HIGHEST = 0x0403  # Highest daily battery voltage e.g. 135 = 13.5V
+REG_DAILY_BATT_V_LOWEST     = 0x0404  # Lowest daily battery voltage e.g. 129 = 12.9V
 
 # ---------------------------------------------------------------------------
 # Status registers (observed always 0x0000 in this session)

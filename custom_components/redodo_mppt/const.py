@@ -11,6 +11,3 @@ CONF_NAME = "name"
 
 # Coordinator poll interval (seconds)
 DEFAULT_POLL_INTERVAL = 30
-
-# How many consecutive errors before the coordinator marks the device unavailable
-MAX_ERRORS_BEFORE_UNAVAILABLE = 3

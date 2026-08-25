@@ -2,9 +2,6 @@
 DataUpdateCoordinator for the Redodo MPPT integration.
 
 Manages the BLE connection lifecycle and periodic Modbus polling.
-Config (absorption/float voltage, max current) is fetched once on first
-successful connect and stored as an attribute — it doesn't change between
-polls so there's no need to read it every cycle.
 """
 
 import logging
@@ -16,8 +13,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .client import RedodoClient
-from .const import DEFAULT_POLL_INTERVAL, DOMAIN, MAX_ERRORS_BEFORE_UNAVAILABLE
-from .models import DeviceInfo, MPPTData, RealtimeData, ExtraData, ConfigData
+from .const import DEFAULT_POLL_INTERVAL, DOMAIN
+from .models import DeviceInfo, MPPTData
 from .parser import parse_config, parse_extra, parse_realtime, parse_device_info
 from .registers import POLL_DEVINFO, POLL_REALTIME, POLL_EXTRA, POLL_CONFIG
 
@@ -36,7 +33,6 @@ class RedodoCoordinator(DataUpdateCoordinator[MPPTData]):
         )
         self._address = address
         self._client: RedodoClient | None = None
-        self._consecutive_errors = 0
 
         # Populated on first successful connect; exposed as a property so
         # sensor entities can read it for device_info without re-polling.
@@ -106,20 +102,11 @@ class RedodoCoordinator(DataUpdateCoordinator[MPPTData]):
             extra_data = await self._try_poll(POLL_EXTRA, parse_extra)
             config_data = await self._try_poll(POLL_CONFIG, parse_config)
 
-            self._consecutive_errors = 0 # Reset consecutive errors
             return MPPTData.from_blocks(realtime_data, extra_data, config_data)
         except UpdateFailed:
             raise
         except Exception as exc:
-            self._consecutive_errors += 1
-            _LOGGER.warning(
-                "Poll error %d/%d: %s",
-                self._consecutive_errors,
-                MAX_ERRORS_BEFORE_UNAVAILABLE,
-                exc,
-            )
             await self._disconnect()
-
             raise UpdateFailed(str(exc)) from exc
 
     async def async_shutdown(self) -> None:

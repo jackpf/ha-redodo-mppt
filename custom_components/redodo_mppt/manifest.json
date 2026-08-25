@@ -10,9 +10,9 @@
   "config_flow": true,
   "dependencies": ["bluetooth"],
   "documentation": "https://github.com/jackpf/ha-redodo-mppt",
-  "issue_tracker": "https://github.com/jackpf/ha-redodo-mppt/issues",
   "integration_type": "device",
   "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/jackpf/ha-redodo-mppt/issues",
   "requirements": [],
   "version": "0.1.0"
 }

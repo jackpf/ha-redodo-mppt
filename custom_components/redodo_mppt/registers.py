@@ -14,7 +14,7 @@ REG_FW_VERSION = 0x000B  # Firmware version  (raw integer, e.g. 6156)
 REG_MODEL_START = 0x000C  # First of 7 registers holding ASCII model name
 REG_MODEL_END = 0x0012  # "RO-MPPTCC244 " (each register = 2 ASCII bytes)
 REG_UNK_014 = 0x0014  # TODO Confirm: observed 160
-REG_RATED_W = 0x0015  # TODO Confirm: observed 150
+REG_UNK_015 = 0x0015  # TODO Confirm: observed 150
 
 # ---------------------------------------------------------------------------
 # Real-time data — primary poll block

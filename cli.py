@@ -46,7 +46,7 @@ from redodo_mppt.registers import (
 
 async def scan_and_pick() -> BLEDevice:
     """Scan for nearby BLE devices and let the user pick one."""
-    print("Scanning for BLE devices (10 s)...")
+    print("Scanning for BLE devices...")
     devices = await BleakScanner.discover(timeout=10.0, return_adv=False)
 
     candidates = [d for d in devices if d.name]
@@ -131,9 +131,6 @@ async def run(address: str | None, interval: int) -> None:
                 print(err)
 
             await asyncio.sleep(interval)
-
-    except KeyboardInterrupt:
-        print("\nStopping.")
     finally:
         await client.disconnect()
 

@@ -13,26 +13,29 @@ from .registers import (
     POLL_DEVINFO_COUNT,
     POLL_EXTRA_COUNT,
     POLL_REALTIME_COUNT,
+    REGISTER_MAP,
     REG_ABSORPTION_V,
+    REG_BATT_TEMP,
     REG_BATT_VOLTAGE,
-    REG_BATT_VOLTAGE2,
-    REG_CYCLE_COUNT,
-    REG_ENERGY_ACC,
+    REG_CHARGE_AMOUNT,
+    REG_CHARGE_AMOUNT_CUMULATIVE,
+    REG_CHARGE_CURRENT,
+    REG_CHARGE_MAX_POWER,
+    REG_CHARGE_POWER,
+    REG_DAILY_BATT_V_HIGHEST,
+    REG_DAILY_BATT_V_LOWEST,
+    REG_DAILY_DISCHARGE_AMOUNT,
+    REG_DAYS_ON,
+    REG_DISCHARGE_AMOUNT_CUMULATIVE,
+    REG_FLOAT_V,
     REG_FW_VERSION,
     REG_HW_VERSION,
     REG_MAX_CHARGE_A,
     REG_MODEL_START,
-    REG_OUTPUT_V,
-    REG_PV_CURRENT,
-    REG_PV_CURRENT2,
     REG_PV_VOLTAGE,
-    REG_PV_VOLTAGE2,
     REG_RATED_A,
     REG_RATED_W,
     REG_SOC,
-    REG_TODAY_ENERGY,
-    REG_TOTAL_AH,
-    REG_FLOAT_V,
 )
 
 
@@ -98,20 +101,23 @@ def parse_realtime(payload: bytes) -> MPPTData:
     return MPPTData(
         soc=r(REG_SOC),
         battery_voltage=r(REG_BATT_VOLTAGE) / 10.0,
+        charge_current=r(REG_CHARGE_CURRENT) / 100.0,
+        charge_power=r(REG_CHARGE_POWER),
+        battery_temp_f=r(REG_BATT_TEMP) / 100.0,
         pv_voltage=r(REG_PV_VOLTAGE) / 10.0,
-        pv_current=r(REG_PV_CURRENT) / 100.0,
-        energy_acc=r(REG_ENERGY_ACC),
-        today_energy=r(REG_TODAY_ENERGY),
-        total_ah=r(REG_TOTAL_AH),
-        cycle_count=r(REG_CYCLE_COUNT),
+        charge_max_power=r(REG_CHARGE_MAX_POWER),
+        daily_charge_wh=r(REG_CHARGE_AMOUNT),
+        days_on=r(REG_DAYS_ON),
+        total_charge_wh=r(REG_CHARGE_AMOUNT_CUMULATIVE),
+        total_discharge_wh=r(REG_DISCHARGE_AMOUNT_CUMULATIVE),
     )
 
 
 def merge_extra(payload: bytes, data: MPPTData) -> MPPTData:
     """
     Decode the 5-register POLL_EXTRA response (0x0400 block) and merge into
-    an existing MPPTData. Battery voltage is updated from the confirmed register;
-    PV fields are updated only if the primary block left them as None.
+    an existing MPPTData. Only fields that have no equivalent in the primary
+    block are populated here: daily discharge, and daily min/max voltage.
     """
     regs = _unpack_registers(payload, POLL_EXTRA_COUNT)
     base = 0x0400
@@ -119,14 +125,9 @@ def merge_extra(payload: bytes, data: MPPTData) -> MPPTData:
     def r(addr: int) -> int:
         return regs[addr - base]
 
-    # 0x0403 is the confirmed battery voltage mirror — update unconditionally
-    data.battery_voltage = r(REG_BATT_VOLTAGE2) / 10.0
-
-    # Only fill PV fields if still unset (primary block takes priority)
-    if data.pv_voltage is None:
-        data.pv_voltage = r(REG_PV_VOLTAGE2) / 10.0
-    if data.pv_current is None:
-        data.pv_current = r(REG_PV_CURRENT2) / 100.0
+    data.daily_discharge_wh = r(REG_DAILY_DISCHARGE_AMOUNT)
+    data.daily_batt_v_high = r(REG_DAILY_BATT_V_HIGHEST) / 10.0
+    data.daily_batt_v_low = r(REG_DAILY_BATT_V_LOWEST) / 10.0
 
     return data
 
@@ -143,6 +144,41 @@ def parse_config(payload: bytes, data: MPPTData) -> MPPTData:
     data.float_voltage = r(REG_FLOAT_V) / 10.0
     data.max_charge_current = r(REG_MAX_CHARGE_A)
     return data
+
+
+def parse_debug(payloads: dict[str, bytes]) -> dict[str, int]:
+    """
+    Parse all poll block payloads and return {REG_NAME: raw_int} for every
+    named register found across all blocks.
+
+    Expected keys in payloads: devinfo / realtime / extra / config /
+    status1 / status2.  Missing keys are silently skipped.
+    """
+    _blocks: dict[str, tuple[int, int]] = {
+        "devinfo":  (0x000A, POLL_DEVINFO_COUNT),
+        "realtime": (0x0101, POLL_REALTIME_COUNT),
+        "extra":    (0x0400, POLL_EXTRA_COUNT),
+        "config":   (0x0201, POLL_CONFIG_COUNT),
+        "status1":  (0x0121, 1),
+        "status2":  (0x0122, 1),
+    }
+
+    raw: dict[str, int] = {}
+    for block_name, (base, count) in _blocks.items():
+        payload = payloads.get(block_name)
+        if payload is None:
+            continue
+        try:
+            regs = _unpack_registers(payload, count)
+        except ValueError as exc:
+            raw[f"[{block_name} parse error]"] = str(exc)  # type: ignore[assignment]
+            continue
+        for name, addr in REGISTER_MAP.items():
+            offset = addr - base
+            if 0 <= offset < len(regs):
+                raw[name] = regs[offset]
+
+    return dict(sorted(raw.items(), key=lambda kv: REGISTER_MAP.get(kv[0], 0xFFFF)))
 
 
 def parse_devinfo(payload: bytes) -> DeviceInfo:

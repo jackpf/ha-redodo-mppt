@@ -25,47 +25,41 @@ REG_RATED_W      = 0x0015  # Rated power?   observed 150 → 150 W   (TODO: conf
 # Request: 01 03 01 01 00 13 54 3B  → 19 registers @ 0x0101
 # ---------------------------------------------------------------------------
 
-# Confirmed (matched against known-good 12V LiFePO4 readings)
 REG_SOC          = 0x0101  # Battery state of charge (%)
-REG_BATT_VOLTAGE = 0x0102  # Battery voltage  — divide by 10 → V  (observed 132 = 13.2 V)
+REG_BATT_VOLTAGE = 0x0102  # Battery voltage  — divide by 10 → V  (observed 132 = 13.2V)
 
-# Unconfirmed — all observed near-zero during indoor test
-REG_BATT_CURRENT = 0x0103  # TODO: battery charge/discharge current (÷10 A? ÷100 A?)
-REG_BATT_POWER   = 0x0104  # TODO: battery power (W?)
-REG_ENERGY_ACC   = 0x0105  # TODO: energy accumulator — unit unknown (Wh? ×0.1 kWh?)
-                            #       observed 6169 — could be total lifetime Wh
-REG_UNK_106      = 0x0106  # TODO: unknown, always 0 in this session
-REG_UNK_107      = 0x0107  # TODO: unknown, always 0 in this session
-REG_UNK_108      = 0x0108  # TODO: unknown, always 0 in this session
-REG_UNK_109      = 0x0109  # TODO: unknown, always 0 in this session
-REG_PV_VOLTAGE   = 0x010A  # TODO: PV voltage (÷10 → V)?  observed 107 = 10.7 V indoors
-                            #       or temperature? needs outdoor confirmation
-REG_PV_CURRENT   = 0x010B  # TODO: PV current (÷100 → A)? observed 22 = 0.22 A indoors
-                            #       or PV voltage (÷10 → V)? i.e. 2.2 V
-REG_UNK_10C      = 0x010C  # TODO: unknown, always 0
-REG_UNK_10D      = 0x010D  # TODO: unknown, always 0
-REG_UNK_10E      = 0x010E  # TODO: unknown, always 0
-REG_TODAY_ENERGY = 0x010F  # TODO: today's energy (Wh?) — observed 269
-REG_UNK_110      = 0x0110  # TODO: unknown, always 0
-REG_TOTAL_AH     = 0x0111  # TODO: total amp-hours or Wh accumulator — observed 22990
-REG_UNK_112      = 0x0112  # TODO: unknown, always 0
-REG_CYCLE_COUNT  = 0x0113  # TODO: charge cycles? — observed 398
+REG_CHARGE_CURRENT = 0x0103  # Charge current ÷100 e.g. 457 = 4.57A
+REG_CHARGE_POWER   = 0x0104  # Charge power e.g. 44 = 44W
+REG_BATT_TEMP   = 0x0105  # Battery temperature e.g. 7961 = 79.61 degrees F
+REG_UNK_106      = 0x0106  # Unknown, always 0
+REG_UNK_107      = 0x0107  # Unknown, always 0
+REG_UNK_108      = 0x0108  # Unknown, always 0
+REG_PV_VOLTAGE     = 0x0109  # Solar voltage e.g. 445 ÷10 = 44.5V
+REG_CHARGE_MAX_POWER   = 0x010A  # Max solar power e.g. 107 = 107W
+REG_CHARGE_AMOUNT   = 0x010B  # Daily charge amount e.g. 191 = 191Wh
+REG_UNK_10C      = 0x010C  # Unknown, always 0 (todo: these 3 could be related to discharge - always 0 in my case)
+REG_UNK_10D      = 0x010D  # Unknown, observed values: 0, 2
+REG_UNK_10E      = 0x010E  # Unknown, always 0
+REG_DAYS_ON = 0x010F  # Days on-time e.g. 269 = 269 days
+REG_UNK_110      = 0x0110  # Unknown, always 0
+REG_CHARGE_AMOUNT_CUMULATIVE     = 0x0111  # Total Wh charged e.g. 23252 = 23.252kWh
+REG_UNK_112      = 0x0112  # Unknown, always 0 (todo: likely related to discharge)
+REG_DISCHARGE_AMOUNT_CUMULATIVE  = 0x0113  # Cumulative total discharge amount, e.g. 398 -> 398Wh
+# TODO: Poll past 0x0113 to maybe find mppt controller temp
 
 # ---------------------------------------------------------------------------
 # Real-time data — secondary poll block
 # Request: 01 03 04 00 00 05 84 F9  → 5 registers @ 0x0400
 # ---------------------------------------------------------------------------
 
-# 0x0400 and 0x0402 mirror 0x010B and 0x010A respectively — same values,
-# same uncertainty. 0x0403 mirrors 0x0102 (confirmed battery voltage).
-REG_PV_CURRENT2  = 0x0400  # TODO: mirrors REG_PV_CURRENT  (0x010B)
-REG_UNK_401      = 0x0401  # TODO: unknown, always 0
-REG_PV_VOLTAGE2  = 0x0402  # TODO: mirrors REG_PV_VOLTAGE  (0x010A)
-REG_BATT_VOLTAGE2= 0x0403  # Battery voltage (÷10 → V) — mirrors 0x0102
-REG_OUTPUT_V     = 0x0404  # TODO: output/load voltage (÷10 → V)? mirrors 0x0403 indoors
+REG_DAILY_CHARGE_AMOUNT  = 0x0400  # Daily charge amount (mirrors 0x010B) e.g. 123 = 123Wh
+REG_DAILY_DISCHARGE_AMOUNT      = 0x0401  # Daily discharge amount (always 0 in my case) e.g. 123 = 123Wh
+REG_DAILY_CHARGE_MAX_POWER  = 0x0402  # Max charging power e.g. 129 = 129W
+REG_DAILY_BATT_V_HIGHEST = 0x0403  # Highest daily battery voltage e.g. 135 = 13.5V
+REG_DAILY_BATT_V_LOWEST     = 0x0404  # Lowest daily battery voltage e.g. 129 = 12.9V
 
 # ---------------------------------------------------------------------------
-# Status registers (observed always 0x0000 in this session)
+# Status registers
 # ---------------------------------------------------------------------------
 REG_STATUS_1     = 0x0121  # TODO: status / fault flags?
 REG_STATUS_2     = 0x0122  # TODO: status / fault flags?
@@ -77,7 +71,7 @@ REG_STATUS_2     = 0x0122  # TODO: status / fault flags?
 #       (not a standard Modbus CRC). 15 C0 is CRC16-Modbus of the 8 preceding
 #       bytes. Copy these bytes verbatim — do not recalculate.
 # ---------------------------------------------------------------------------
-REG_BATT_TYPE        = 0x0201  # Battery type — observed 1 (1 = LiFePO4?)
+REG_BATT_TYPE        = 0x0201  # Battery type — observed 1 (1 = LiFePO4)
 REG_SYS_VOLTAGE      = 0x0202  # System voltage / cell count — observed 12
 REG_CHARGE_STAGES    = 0x0203  # Number of charge stages — observed 4
 REG_ABSORPTION_V     = 0x0204  # Bulk/absorption voltage (÷10 → V) — 144 = 14.4 V
@@ -110,3 +104,7 @@ POLL_DEVINFO_COUNT  = 16
 POLL_REALTIME_COUNT = 19
 POLL_EXTRA_COUNT    = 5
 POLL_CONFIG_COUNT   = 17
+
+# Auto-built map of {constant_name → register_address} for all REG_* names.
+# Any new REG_* constant added above is automatically included.
+REGISTER_MAP: dict[str, int] = {k: v for k, v in globals().items() if k.startswith("REG_")}

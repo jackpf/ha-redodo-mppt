@@ -1,18 +1,17 @@
 """
-Redodo MPPT — standalone CLI polling tool.
+Redodo MPPT — standalone CLI register dump tool.
+
+Connects to the controller, reads all known Modbus registers, and prints
+every REG_* constant alongside its raw integer value — sorted by address.
+Repeats every --interval seconds so you can watch values change in real time.
 
 Usage:
     python cli.py                        # scan and pick device interactively
     python cli.py --address C8:47:80:07:E8:78
     python cli.py --address C8:47:80:07:E8:78 --interval 5
 
-Useful for:
-  - Verifying the BLE connection works before touching HA
-  - Capturing register values outdoors to confirm the PV register map
-  - Quickly checking device state without opening the official app
-
 On macOS, bleak identifies BLE devices by UUID rather than MAC address.
-Use --scan to list nearby devices and copy the UUID to use as --address.
+Use the interactive scan to list nearby devices and copy the UUID.
 """
 
 from __future__ import annotations
@@ -26,13 +25,9 @@ import os
 _REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_REPO_ROOT, "custom_components"))
 
-from redodo_mppt.client import RedodoClient, FFE1_UUID  # noqa: E402
-from redodo_mppt.parser import (  # noqa: E402
-    merge_extra,
-    parse_config,
-    parse_devinfo,
-    parse_realtime,
-)
+from redodo_mppt.client import RedodoClient  # noqa: E402
+from redodo_mppt.parser import parse_debug, parse_devinfo  # noqa: E402
+from redodo_mppt.registers import REGISTER_MAP  # noqa: E402
 from redodo_mppt.const import SERVICE_UUID  # noqa: E402
 
 from bleak import BleakScanner  # noqa: E402
@@ -42,12 +37,6 @@ from bleak.backends.device import BLEDevice  # noqa: E402
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-def _fmt(label: str, value: object, unit: str = "") -> str:
-    if value is None:
-        return f"  {label:<30} —"
-    return f"  {label:<30} {value}{(' ' + unit) if unit else ''}"
-
 
 async def scan_and_pick() -> BLEDevice:
     """Scan for nearby BLE devices and let the user pick one."""
@@ -76,8 +65,18 @@ async def find_by_address(address: str) -> BLEDevice:
     return device
 
 
+def _print_dump(dump: dict[str, int]) -> None:
+    print("Register dump — sorted by address")
+    print("─" * 52)
+    for name, value in dump.items():
+        addr = REGISTER_MAP.get(name)
+        addr_str = f"0x{addr:04X}" if addr is not None else "      "
+        print(f"  {name:<28} {addr_str}   {value}")
+    print()
+
+
 # ---------------------------------------------------------------------------
-# Main poll loop
+# Main loop
 # ---------------------------------------------------------------------------
 
 async def run(address: str | None, interval: int) -> None:
@@ -88,52 +87,46 @@ async def run(address: str | None, interval: int) -> None:
     await client.connect()
     print("Connected.\n")
 
-    # One-time reads
+    # One-time device info
     try:
         devinfo = parse_devinfo(await client.poll_devinfo())
-        print("Device info")
-        print(_fmt("Model", devinfo.model))
-        print(_fmt("HW version", devinfo.hw_version))
-        print(_fmt("FW version", devinfo.fw_version))
-        print(_fmt("Rated current", devinfo.rated_current, "× (unit TBC)"))
-        print(_fmt("Rated power",   devinfo.rated_power,   "× (unit TBC)"))
+        print(f"  Model      {devinfo.model}")
+        print(f"  HW version {devinfo.hw_version}")
+        print(f"  FW version {devinfo.fw_version}")
         print()
     except Exception as exc:
         print(f"[!] Device info read failed: {exc}\n")
-
-    try:
-        data = parse_realtime(await client.poll_realtime())
-        data = parse_config(await client.poll_config(), data)
-    except Exception as exc:
-        print(f"[!] Initial poll failed: {exc}")
-        await client.disconnect()
-        sys.exit(1)
 
     print(f"Polling every {interval}s  (Ctrl-C to stop)\n")
 
     try:
         while True:
-            try:
-                raw_rt = await client.poll_realtime()
-                data = parse_realtime(raw_rt)
-                raw_ex = await client.poll_extra()
-                data = merge_extra(raw_ex, data)
-            except Exception as exc:
-                print(f"[!] Poll error: {exc}")
-                await asyncio.sleep(interval)
-                continue
+            payloads: dict[str, bytes] = {}
+            errors: list[str] = []
 
-            print("─" * 42)
-            # Confirmed
-            print(_fmt("Battery SOC",     data.soc,             "%"))
-            print(_fmt("Battery voltage", data.battery_voltage,  "V"))
-            # Unconfirmed (shown with label so you can cross-reference the app)
-            print(_fmt("PV voltage  [TODO: confirm]", data.pv_voltage,  "V?"))
-            print(_fmt("PV current  [TODO: confirm]", data.pv_current,  "A?"))
-            print(_fmt("Energy acc  [TODO: confirm]", data.energy_acc,  "raw"))
-            print(_fmt("Today energy[TODO: confirm]", data.today_energy, "raw"))
-            print(_fmt("Total Ah    [TODO: confirm]", data.total_ah,    "raw"))
-            print(_fmt("Cycle count [TODO: confirm]", data.cycle_count, "raw"))
+            for block_name, poll_coro in [
+                ("devinfo",  client.poll_devinfo()),
+                ("realtime", client.poll_realtime()),
+                ("extra",    client.poll_extra()),
+                ("config",   client.poll_config()),
+            ]:
+                try:
+                    payloads[block_name] = await poll_coro
+                except Exception as exc:
+                    errors.append(f"[!] {block_name}: {exc}")
+
+            try:
+                status1, status2 = await client.poll_status()
+                payloads["status1"] = status1
+                payloads["status2"] = status2
+            except Exception as exc:
+                errors.append(f"[!] status: {exc}")
+
+            dump = parse_debug(payloads)
+            _print_dump(dump)
+
+            for err in errors:
+                print(err)
 
             await asyncio.sleep(interval)
 
@@ -148,7 +141,7 @@ async def run(address: str | None, interval: int) -> None:
 # ---------------------------------------------------------------------------
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Redodo MPPT CLI monitor")
+    parser = argparse.ArgumentParser(description="Redodo MPPT register dump")
     parser.add_argument(
         "--address",
         help="BLE address or UUID of the controller (skip interactive scan)",

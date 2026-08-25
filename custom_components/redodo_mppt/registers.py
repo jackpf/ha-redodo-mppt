@@ -1,12 +1,8 @@
 """
 Redodo MPPT — Modbus register map.
 
-All addresses and poll commands reverse-engineered from btsnoop_hci.log.
+All addresses and poll commands reverse-engineered from bluetooth snoop logs.
 All CRC16-Modbus values verified against the captured traffic.
-
-Registers marked TODO: confirmed zero/near-zero during an indoor test with
-no solar input. Cross-reference with the official app outdoors in sunlight
-to confirm exact meaning and scaling.
 """
 
 # ---------------------------------------------------------------------------

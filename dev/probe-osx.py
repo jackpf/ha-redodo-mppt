@@ -1,5 +1,7 @@
 import asyncio
-from bleak import BleakScanner, BleakClient
+
+from bleak import BleakClient, BleakScanner
+
 
 async def main():
     print("Scanning for BT-ROCC2440...")
@@ -16,11 +18,13 @@ async def main():
                 break
 
     if not device:
-        print("Device not found! Make sure your phone's Bluetooth is turned OFF so it releases the connection.")
+        print(
+            "Device not found! Make sure your phone's Bluetooth is turned OFF so it releases the connection."
+        )
         return
 
     print(f"Found Device! Name: {device.name}")
-    print(f"Mac OS UUID: {device.address}") # This will print the Mac UUID!
+    print(f"Mac OS UUID: {device.address}")  # This will print the Mac UUID!
 
     print("\nConnecting to dump services...")
     async with BleakClient(device) as client:
@@ -29,5 +33,6 @@ async def main():
             print(f"\n[Service] {service.uuid}")
             for char in service.characteristics:
                 print(f"  [Char] {char.uuid} | Properties: {char.properties}")
+
 
 asyncio.run(main())

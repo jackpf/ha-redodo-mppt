@@ -12,12 +12,8 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PERCENTAGE
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.const import (
+    PERCENTAGE,
     UnitOfElectricCurrent,
     UnitOfElectricPotential,
     UnitOfEnergy,
@@ -25,10 +21,13 @@ from homeassistant.const import (
     UnitOfTemperature,
     UnitOfTime,
 )
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import RedodoCoordinator
-from .models import MPPTData
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -92,7 +91,6 @@ SENSOR_DESCRIPTIONS: tuple[RedodoSensorDescription, ...] = (
         suggested_display_precision=1,
         value_fn=lambda d: d.battery_temp_f,
     ),
-
     # --- Daily stats ---
     RedodoSensorDescription(
         key="daily_charge_wh",
@@ -136,7 +134,6 @@ SENSOR_DESCRIPTIONS: tuple[RedodoSensorDescription, ...] = (
         suggested_display_precision=1,
         value_fn=lambda d: d.daily_batt_v_low,
     ),
-
     # --- Cumulative ---
     RedodoSensorDescription(
         key="total_charge_wh",

@@ -13,10 +13,11 @@ from .registers import (
     POLL_DEVINFO_COUNT,
     POLL_EXTRA_COUNT,
     POLL_REALTIME_COUNT,
+    REGISTER_MAP,
     REG_ABSORPTION_V,
     REG_BATT_VOLTAGE,
     REG_BATT_VOLTAGE2,
-    REG_CYCLE_COUNT,
+    REG_TOTAL_DISCHARGE,
     REG_ENERGY_ACC,
     REG_FW_VERSION,
     REG_HW_VERSION,
@@ -103,7 +104,7 @@ def parse_realtime(payload: bytes) -> MPPTData:
         energy_acc=r(REG_ENERGY_ACC),
         today_energy=r(REG_TODAY_ENERGY),
         total_ah=r(REG_TOTAL_AH),
-        cycle_count=r(REG_CYCLE_COUNT),
+        total_discharge=r(REG_TOTAL_DISCHARGE),
     )
 
 
@@ -143,6 +144,41 @@ def parse_config(payload: bytes, data: MPPTData) -> MPPTData:
     data.float_voltage = r(REG_FLOAT_V) / 10.0
     data.max_charge_current = r(REG_MAX_CHARGE_A)
     return data
+
+
+def parse_debug(payloads: dict[str, bytes]) -> dict[str, int]:
+    """
+    Parse all poll block payloads and return {REG_NAME: raw_int} for every
+    named register found across all blocks.
+
+    Expected keys in payloads: devinfo / realtime / extra / config /
+    status1 / status2.  Missing keys are silently skipped.
+    """
+    _blocks: dict[str, tuple[int, int]] = {
+        "devinfo":  (0x000A, POLL_DEVINFO_COUNT),
+        "realtime": (0x0101, POLL_REALTIME_COUNT),
+        "extra":    (0x0400, POLL_EXTRA_COUNT),
+        "config":   (0x0201, POLL_CONFIG_COUNT),
+        "status1":  (0x0121, 1),
+        "status2":  (0x0122, 1),
+    }
+
+    raw: dict[str, int] = {}
+    for block_name, (base, count) in _blocks.items():
+        payload = payloads.get(block_name)
+        if payload is None:
+            continue
+        try:
+            regs = _unpack_registers(payload, count)
+        except ValueError as exc:
+            raw[f"[{block_name} parse error]"] = str(exc)  # type: ignore[assignment]
+            continue
+        for name, addr in REGISTER_MAP.items():
+            offset = addr - base
+            if 0 <= offset < len(regs):
+                raw[name] = regs[offset]
+
+    return dict(sorted(raw.items(), key=lambda kv: REGISTER_MAP.get(kv[0], 0xFFFF)))
 
 
 def parse_devinfo(payload: bytes) -> DeviceInfo:

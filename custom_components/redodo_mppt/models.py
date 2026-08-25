@@ -34,7 +34,7 @@ class MPPTData:
     energy_acc: int | None = None      # raw (TODO: confirm unit — Wh?)
     today_energy: int | None = None    # raw (TODO: confirm unit — Wh?)
     total_ah: int | None = None        # raw (TODO: confirm unit)
-    cycle_count: int | None = None     # raw (TODO: confirm)
+    total_discharge: int | None = None     # raw
 
     # --- Config (populated from POLL_CONFIG, static) ---
     absorption_voltage: float | None = None

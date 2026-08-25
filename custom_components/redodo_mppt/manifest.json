@@ -4,12 +4,14 @@
   "version": "0.1.0",
   "codeowners": [],
   "dependencies": ["bluetooth"],
+  "documentation": "https://github.com/jackpf/ha-redodo-mppt",
+  "integration_type": "device",
+  "iot_class": "local_polling",
   "requirements": [],
   "bluetooth": [
     {
       "service_uuid": "0000ffe0-0000-1000-8000-00805f9b34fb"
     }
   ],
-  "config_flow": true,
-  "iot_class": "local_polling"
+  "config_flow": true
 }

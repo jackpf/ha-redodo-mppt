@@ -17,8 +17,8 @@ REG_HW_VERSION   = 0x000A  # Hardware revision (raw integer, e.g. 10260)
 REG_FW_VERSION   = 0x000B  # Firmware version  (raw integer, e.g. 6156)
 REG_MODEL_START  = 0x000C  # First of 7 registers holding ASCII model name
 REG_MODEL_END    = 0x0012  # "RO-MPPTCC244 " (each register = 2 ASCII bytes)
-REG_RATED_A      = 0x0014  # Rated current? observed 160 → 16.0 A  (TODO: confirm unit)
-REG_RATED_W      = 0x0015  # Rated power?   observed 150 → 150 W   (TODO: confirm unit)
+REG_UNK_014      = 0x0014  # TODO Confirm: observed 160
+REG_RATED_W      = 0x0015  # TODO Confirm: observed 150
 
 # ---------------------------------------------------------------------------
 # Real-time data — primary poll block
@@ -37,13 +37,13 @@ REG_UNK_108      = 0x0108  # Unknown, always 0
 REG_PV_VOLTAGE     = 0x0109  # Solar voltage e.g. 445 ÷10 = 44.5V
 REG_CHARGE_MAX_POWER   = 0x010A  # Max solar power e.g. 107 = 107W
 REG_CHARGE_AMOUNT   = 0x010B  # Daily charge amount e.g. 191 = 191Wh
-REG_UNK_10C      = 0x010C  # Unknown, always 0 (todo: these 3 could be related to discharge - always 0 in my case)
+REG_UNK_10C      = 0x010C  # Unknown, always 0 (TODO: these 3 could be related to discharge - always 0 in my case)
 REG_UNK_10D      = 0x010D  # Unknown, observed values: 0, 2
 REG_UNK_10E      = 0x010E  # Unknown, always 0
 REG_DAYS_ON = 0x010F  # Days on-time e.g. 269 = 269 days
 REG_UNK_110      = 0x0110  # Unknown, always 0
 REG_CHARGE_AMOUNT_CUMULATIVE     = 0x0111  # Total Wh charged e.g. 23252 = 23.252kWh
-REG_UNK_112      = 0x0112  # Unknown, always 0 (todo: likely related to discharge)
+REG_UNK_112      = 0x0112  # Unknown, always 0 (TODO: likely related to discharge)
 REG_DISCHARGE_AMOUNT_CUMULATIVE  = 0x0113  # Cumulative total discharge amount, e.g. 398 -> 398Wh
 # TODO: Poll past 0x0113 to maybe find mppt controller temp
 

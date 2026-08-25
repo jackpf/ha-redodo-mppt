@@ -7,7 +7,7 @@ address byte) and return structured data or raise ValueError on malformed input.
 
 import struct
 
-from .models import DeviceInfo, MPPTData
+from .models import ConfigData, DeviceInfo, ExtraData, MPPTData, RealtimeData
 from .registers import (
     POLL_CONFIG_COUNT,
     POLL_DEVINFO_COUNT,
@@ -33,8 +33,6 @@ from .registers import (
     REG_MAX_CHARGE_A,
     REG_MODEL_START,
     REG_PV_VOLTAGE,
-    REG_RATED_A,
-    REG_RATED_W,
     REG_SOC,
 )
 
@@ -90,7 +88,7 @@ def _unpack_registers(payload: bytes, expected_count: int) -> list[int]:
 # Public parse functions
 # ---------------------------------------------------------------------------
 
-def parse_realtime(payload: bytes) -> MPPTData:
+def parse_realtime(payload: bytes) -> RealtimeData:
     """Decode the 19-register POLL_REALTIME response (0x0101 block)."""
     regs = _unpack_registers(payload, POLL_REALTIME_COUNT)
     base = REG_SOC  # 0x0101
@@ -98,7 +96,7 @@ def parse_realtime(payload: bytes) -> MPPTData:
     def r(addr: int) -> int:
         return regs[addr - base]
 
-    return MPPTData(
+    return RealtimeData(
         soc=r(REG_SOC),
         battery_voltage=r(REG_BATT_VOLTAGE) / 10.0,
         charge_current=r(REG_CHARGE_CURRENT) / 100.0,
@@ -113,37 +111,34 @@ def parse_realtime(payload: bytes) -> MPPTData:
     )
 
 
-def merge_extra(payload: bytes, data: MPPTData) -> MPPTData:
-    """
-    Decode the 5-register POLL_EXTRA response (0x0400 block) and merge into
-    an existing MPPTData. Only fields that have no equivalent in the primary
-    block are populated here: daily discharge, and daily min/max voltage.
-    """
+def parse_extra(payload: bytes) -> ExtraData:
+    """Decode the 5-register POLL_EXTRA response (0x0400 block)."""
     regs = _unpack_registers(payload, POLL_EXTRA_COUNT)
     base = 0x0400
 
     def r(addr: int) -> int:
         return regs[addr - base]
 
-    data.daily_discharge_wh = r(REG_DAILY_DISCHARGE_AMOUNT)
-    data.daily_batt_v_high = r(REG_DAILY_BATT_V_HIGHEST) / 10.0
-    data.daily_batt_v_low = r(REG_DAILY_BATT_V_LOWEST) / 10.0
+    return ExtraData(
+        daily_discharge_wh=r(REG_DAILY_DISCHARGE_AMOUNT),
+        daily_batt_v_high=r(REG_DAILY_BATT_V_HIGHEST) / 10.0,
+        daily_batt_v_low=r(REG_DAILY_BATT_V_LOWEST) / 10.0,
+    )
 
-    return data
 
-
-def parse_config(payload: bytes, data: MPPTData) -> MPPTData:
-    """Decode the 17-register POLL_CONFIG response (0x0201 block) and merge."""
+def parse_config(payload: bytes) -> ConfigData:
+    """Decode the 17-register POLL_CONFIG response (0x0201 block)."""
     regs = _unpack_registers(payload, POLL_CONFIG_COUNT)
     base = 0x0201
 
     def r(addr: int) -> int:
         return regs[addr - base]
 
-    data.absorption_voltage = r(REG_ABSORPTION_V) / 10.0
-    data.float_voltage = r(REG_FLOAT_V) / 10.0
-    data.max_charge_current = r(REG_MAX_CHARGE_A)
-    return data
+    return ConfigData(
+        absorption_voltage=r(REG_ABSORPTION_V) / 10.0,
+        float_voltage=r(REG_FLOAT_V) / 10.0,
+        max_charge_current=r(REG_MAX_CHARGE_A),
+    )
 
 
 def parse_debug(payloads: dict[str, bytes]) -> dict[str, int]:
@@ -181,7 +176,7 @@ def parse_debug(payloads: dict[str, bytes]) -> dict[str, int]:
     return dict(sorted(raw.items(), key=lambda kv: REGISTER_MAP.get(kv[0], 0xFFFF)))
 
 
-def parse_devinfo(payload: bytes) -> DeviceInfo:
+def parse_device_info(payload: bytes) -> DeviceInfo:
     """Decode the 16-register POLL_DEVINFO response (0x000A block)."""
     regs = _unpack_registers(payload, POLL_DEVINFO_COUNT)
     base = 0x000A
@@ -200,6 +195,4 @@ def parse_devinfo(payload: bytes) -> DeviceInfo:
         model=model,
         hw_version=r(REG_HW_VERSION),
         fw_version=r(REG_FW_VERSION),
-        rated_current=r(REG_RATED_A),
-        rated_power=r(REG_RATED_W),
     )

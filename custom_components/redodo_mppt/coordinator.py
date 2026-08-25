@@ -7,9 +7,9 @@ successful connect and stored as an attribute — it doesn't change between
 polls so there's no need to read it every cycle.
 """
 
-import asyncio
 import logging
 from datetime import timedelta
+from typing import TypeVar, Callable
 
 from homeassistant.components import bluetooth
 from homeassistant.core import HomeAssistant
@@ -17,8 +17,9 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .client import RedodoClient
 from .const import DEFAULT_POLL_INTERVAL, DOMAIN, MAX_ERRORS_BEFORE_UNAVAILABLE
-from .models import DeviceInfo, MPPTData
-from .parser import merge_extra, parse_config, parse_devinfo, parse_realtime
+from .models import DeviceInfo, MPPTData, RealtimeData, ExtraData, ConfigData
+from .parser import parse_config, parse_extra, parse_realtime, parse_device_info
+from .registers import POLL_DEVINFO, POLL_REALTIME, POLL_EXTRA, POLL_CONFIG
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,7 +37,6 @@ class RedodoCoordinator(DataUpdateCoordinator[MPPTData]):
         self._address = address
         self._client: RedodoClient | None = None
         self._consecutive_errors = 0
-        self._config_fetched = False
 
         # Populated on first successful connect; exposed as a property so
         # sensor entities can read it for device_info without re-polling.
@@ -46,11 +46,11 @@ class RedodoCoordinator(DataUpdateCoordinator[MPPTData]):
     # Connection helpers
     # ------------------------------------------------------------------
 
-    async def _ensure_connected(self) -> RedodoClient:
-        """Return a connected client, creating/reconnecting as needed."""
-        if self._client and self._client.is_connected:
-            return self._client
+    def _is_connected(self) -> bool:
+        return bool(self._client and self._client.is_connected)
 
+    async def _connect(self) -> None:
+        """Creates a connected client."""
         ble_device = bluetooth.async_ble_device_from_address(
             self.hass, self._address, connectable=True
         )
@@ -66,18 +66,23 @@ class RedodoCoordinator(DataUpdateCoordinator[MPPTData]):
             raise UpdateFailed(f"BLE connection failed: {exc}") from exc
 
         self._client = client
-        self._config_fetched = False  # re-fetch config after reconnect
         _LOGGER.info("Connected to Redodo MPPT at %s", self._address)
-        return client
 
-    async def _fetch_static_data(self, client: RedodoClient) -> None:
-        """Read device info and config once per connection."""
+    async def _disconnect(self) -> None:
+        if self._client:
+            try:
+                await self._client.disconnect()
+            except Exception:
+                pass
+            self._client = None
+
+    T = TypeVar("T")
+    async def _try_poll(self, command: bytes, parse_fn: Callable[[bytes], T]) -> T | None:
         try:
-            raw_devinfo = await client.poll_devinfo()
-            self.device_info = parse_devinfo(raw_devinfo)
-            _LOGGER.debug("Device info: %s", self.device_info)
+            return parse_fn(await self._client.poll(command))
         except Exception as exc:
-            _LOGGER.warning("Failed to read device info: %s", exc)
+            _LOGGER.warning("Poll failed: %s", exc)
+            return None
 
     # ------------------------------------------------------------------
     # DataUpdateCoordinator protocol
@@ -85,40 +90,24 @@ class RedodoCoordinator(DataUpdateCoordinator[MPPTData]):
 
     async def _async_update_data(self) -> MPPTData:
         try:
-            client = await self._ensure_connected()
+            if not self._is_connected():
+                await self._connect()
+                self.device_info = None # Re-fetch
 
-            # One-time static reads after each new connection
-            if not self._config_fetched:
-                await self._fetch_static_data(client)
-                self._config_fetched = True
+            if self.device_info is None:
+                self.device_info = await self._try_poll(POLL_DEVINFO, parse_device_info)
 
-            # Primary real-time poll
-            raw_realtime = await client.poll_realtime()
-            data = parse_realtime(raw_realtime)
+            realtime_data = await self._try_poll(POLL_REALTIME, parse_realtime)
 
-            # Supplemental poll — merges battery voltage mirror + PV fields
-            try:
-                raw_extra = await client.poll_extra()
-                data = merge_extra(raw_extra, data)
-            except Exception as exc:
-                _LOGGER.debug("Extra poll failed (non-fatal): %s", exc)
+            # If primary poll fails, we stop
+            if realtime_data is None:
+                raise UpdateFailed("Poll failed")
 
-            # Config poll — only on first cycle after connect
-            if not hasattr(self, "_config_merged") or not self._config_merged:
-                try:
-                    raw_config = await client.poll_config()
-                    data = parse_config(raw_config, data)
-                    self._config_merged = True
-                except Exception as exc:
-                    _LOGGER.debug("Config poll failed (non-fatal): %s", exc)
-                    self._config_merged = False
+            extra_data = await self._try_poll(POLL_EXTRA, parse_extra)
+            config_data = await self._try_poll(POLL_CONFIG, parse_config)
 
-            if not data.is_valid():
-                raise UpdateFailed("Response parsed but produced no usable data")
-
-            self._consecutive_errors = 0
-            return data
-
+            self._consecutive_errors = 0 # Reset consecutive errors
+            return MPPTData.from_blocks(realtime_data, extra_data, config_data)
         except UpdateFailed:
             raise
         except Exception as exc:
@@ -129,22 +118,11 @@ class RedodoCoordinator(DataUpdateCoordinator[MPPTData]):
                 MAX_ERRORS_BEFORE_UNAVAILABLE,
                 exc,
             )
-            # Drop the connection so _ensure_connected reconnects next cycle
-            if self._client:
-                try:
-                    await self._client.disconnect()
-                except Exception:
-                    pass
-                self._client = None
+            await self._disconnect()
 
             raise UpdateFailed(str(exc)) from exc
 
     async def async_shutdown(self) -> None:
         """Disconnect cleanly when the integration is unloaded."""
-        if self._client:
-            try:
-                await self._client.disconnect()
-            except Exception:
-                pass
-            self._client = None
+        await self._disconnect()
         await super().async_shutdown()

@@ -7,13 +7,12 @@ address byte) and return structured data or raise ValueError on malformed input.
 
 import struct
 
-from .models import ConfigData, DeviceInfo, ExtraData, MPPTData, RealtimeData
+from .models import ConfigData, DeviceInfo, ExtraData, RealtimeData
 from .registers import (
     POLL_CONFIG_COUNT,
     POLL_DEVINFO_COUNT,
     POLL_EXTRA_COUNT,
     POLL_REALTIME_COUNT,
-    REGISTER_MAP,
     REG_ABSORPTION_V,
     REG_BATT_TEMP,
     REG_BATT_VOLTAGE,
@@ -34,6 +33,7 @@ from .registers import (
     REG_MODEL_START,
     REG_PV_VOLTAGE,
     REG_SOC,
+    REGISTER_MAP,
 )
 
 
@@ -75,11 +75,15 @@ def _unpack_registers(payload: bytes, expected_count: int) -> list[int]:
     data = payload[3 : 3 + byte_count]
 
     if len(data) != byte_count:
-        raise ValueError(f"Truncated data: expected {byte_count} bytes, got {len(data)}")
+        raise ValueError(
+            f"Truncated data: expected {byte_count} bytes, got {len(data)}"
+        )
 
     count = byte_count // 2
     if count != expected_count:
-        raise ValueError(f"Register count mismatch: expected {expected_count}, got {count}")
+        raise ValueError(
+            f"Register count mismatch: expected {expected_count}, got {count}"
+        )
 
     return [struct.unpack_from(">H", data, i * 2)[0] for i in range(count)]
 
@@ -87,6 +91,7 @@ def _unpack_registers(payload: bytes, expected_count: int) -> list[int]:
 # ---------------------------------------------------------------------------
 # Public parse functions
 # ---------------------------------------------------------------------------
+
 
 def parse_realtime(payload: bytes) -> RealtimeData:
     """Decode the 19-register POLL_REALTIME response (0x0101 block)."""
@@ -150,12 +155,12 @@ def parse_debug(payloads: dict[str, bytes]) -> dict[str, int]:
     status1 / status2.  Missing keys are silently skipped.
     """
     _blocks: dict[str, tuple[int, int]] = {
-        "devinfo":  (0x000A, POLL_DEVINFO_COUNT),
+        "devinfo": (0x000A, POLL_DEVINFO_COUNT),
         "realtime": (0x0101, POLL_REALTIME_COUNT),
-        "extra":    (0x0400, POLL_EXTRA_COUNT),
-        "config":   (0x0201, POLL_CONFIG_COUNT),
-        "status1":  (0x0121, 1),
-        "status2":  (0x0122, 1),
+        "extra": (0x0400, POLL_EXTRA_COUNT),
+        "config": (0x0201, POLL_CONFIG_COUNT),
+        "status1": (0x0121, 1),
+        "status2": (0x0122, 1),
     }
 
     raw: dict[str, int] = {}

@@ -18,25 +18,23 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import sys
 import os
+import sys
 
 # Resolve the path to custom_components/ regardless of where cli.py is invoked from
 _REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_REPO_ROOT, "custom_components"))
 
-from redodo_mppt.client import RedodoClient  # noqa: E402
-from redodo_mppt.parser import parse_debug, parse_devinfo  # noqa: E402
-from redodo_mppt.registers import REGISTER_MAP  # noqa: E402
-from redodo_mppt.const import SERVICE_UUID  # noqa: E402
-
-from bleak import BleakScanner  # noqa: E402
-from bleak.backends.device import BLEDevice  # noqa: E402
-
+from bleak import BleakScanner
+from bleak.backends.device import BLEDevice
+from redodo_mppt.client import RedodoClient
+from redodo_mppt.parser import parse_debug, parse_devinfo
+from redodo_mppt.registers import REGISTER_MAP
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 async def scan_and_pick() -> BLEDevice:
     """Scan for nearby BLE devices and let the user pick one."""
@@ -79,6 +77,7 @@ def _print_dump(dump: dict[str, int]) -> None:
 # Main loop
 # ---------------------------------------------------------------------------
 
+
 async def run(address: str | None, interval: int) -> None:
     device = await (find_by_address(address) if address else scan_and_pick())
     print(f"\nConnecting to {device.name} ({device.address})...")
@@ -105,10 +104,10 @@ async def run(address: str | None, interval: int) -> None:
             errors: list[str] = []
 
             for block_name, poll_coro in [
-                ("devinfo",  client.poll_devinfo()),
+                ("devinfo", client.poll_devinfo()),
                 ("realtime", client.poll_realtime()),
-                ("extra",    client.poll_extra()),
-                ("config",   client.poll_config()),
+                ("extra", client.poll_extra()),
+                ("config", client.poll_config()),
             ]:
                 try:
                     payloads[block_name] = await poll_coro
@@ -139,6 +138,7 @@ async def run(address: str | None, interval: int) -> None:
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Redodo MPPT register dump")

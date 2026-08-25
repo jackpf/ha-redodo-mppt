@@ -165,18 +165,20 @@ FFE1_UUID = "0000ffe1-0000-1000-8000-00805f9b34fb"
 CCCD_HANDLE = 0x0013  # or discover via GATT
 
 # Modbus FC03 read requests
-CMD_REALTIME  = bytes.fromhex("010301010013543b")  # 19 regs @ 0x0101
-CMD_EXTRA     = bytes.fromhex("01030400000584f9")  # 5 regs  @ 0x0400
-CMD_DEVINFO   = bytes.fromhex("0103000a00106404")  # 16 regs @ 0x000A
-CMD_CONFIG    = bytes.fromhex("010302010011e47e15c0")  # 17 regs @ 0x0201 (non-standard)
+CMD_REALTIME = bytes.fromhex("010301010013543b")  # 19 regs @ 0x0101
+CMD_EXTRA = bytes.fromhex("01030400000584f9")  # 5 regs  @ 0x0400
+CMD_DEVINFO = bytes.fromhex("0103000a00106404")  # 16 regs @ 0x000A
+CMD_CONFIG = bytes.fromhex("010302010011e47e15c0")  # 17 regs @ 0x0201 (non-standard)
+
 
 def parse_modbus_response(data: bytes) -> list[int]:
     """Parse Modbus FC03 response, return list of register values."""
     if len(data) < 3 or data[1] != 0x03:
         return []
     byte_count = data[2]
-    raw = data[3:3 + byte_count]
-    return [struct.unpack(">H", raw[i:i+2])[0] for i in range(0, len(raw), 2)]
+    raw = data[3 : 3 + byte_count]
+    return [struct.unpack(">H", raw[i : i + 2])[0] for i in range(0, len(raw), 2)]
+
 
 async def monitor(address: str):
     async with BleakClient(address) as client:
@@ -191,8 +193,8 @@ async def monitor(address: str):
                 return
             # Main real-time block (0x0101, 19 regs)
             if len(regs) == 19:
-                soc        = regs[0]          # %
-                batt_v     = regs[1] / 10.0   # V
+                soc = regs[0]  # %
+                batt_v = regs[1] / 10.0  # V
                 print(f"SOC: {soc}%  Battery: {batt_v:.1f}V")
             # Supplemental block (0x0400, 5 regs)
             elif len(regs) == 5:

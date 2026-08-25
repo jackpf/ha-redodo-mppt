@@ -5,9 +5,11 @@ Manages the BLE connection lifecycle and periodic Modbus polling.
 """
 
 import logging
+from collections.abc import Callable
 from datetime import timedelta
-from typing import TypeVar, Callable
+from typing import TypeVar
 
+from bleak import BleakError
 from homeassistant.components import bluetooth
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -15,12 +17,12 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .client import RedodoClient
 from .const import DEFAULT_POLL_INTERVAL, DOMAIN
 from .models import DeviceInfo, MPPTData
-from .parser import parse_config, parse_extra, parse_realtime, parse_device_info
-from .registers import POLL_DEVINFO, POLL_REALTIME, POLL_EXTRA, POLL_CONFIG
+from .parser import parse_config, parse_device_info, parse_extra, parse_realtime
+from .registers import POLL_CONFIG, POLL_DEVINFO, POLL_EXTRA, POLL_REALTIME
 
 _LOGGER = logging.getLogger(__name__)
 
-
+T = TypeVar("T")
 class RedodoCoordinator(DataUpdateCoordinator[MPPTData]):
     """Polls the Redodo MPPT controller over BLE on a fixed interval."""
 
@@ -58,7 +60,7 @@ class RedodoCoordinator(DataUpdateCoordinator[MPPTData]):
         client = RedodoClient(ble_device)
         try:
             await client.connect()
-        except Exception as exc:
+        except BleakError as exc:
             raise UpdateFailed(f"BLE connection failed: {exc}") from exc
 
         self._client = client
@@ -68,15 +70,16 @@ class RedodoCoordinator(DataUpdateCoordinator[MPPTData]):
         if self._client:
             try:
                 await self._client.disconnect()
-            except Exception:
-                pass
+            except BleakError as exc:
+                _LOGGER.warning("Disconnect failed: %s", exc)
             self._client = None
 
-    T = TypeVar("T")
-    async def _try_poll(self, command: bytes, parse_fn: Callable[[bytes], T]) -> T | None:
+    async def _try_poll(
+        self, command: bytes, parse_fn: Callable[[bytes], T]
+    ) -> T | None:
         try:
             return parse_fn(await self._client.poll(command))
-        except Exception as exc:
+        except Exception as exc: # noqa: BLE001
             _LOGGER.warning("Poll failed: %s", exc)
             return None
 
@@ -88,7 +91,7 @@ class RedodoCoordinator(DataUpdateCoordinator[MPPTData]):
         try:
             if not self._is_connected():
                 await self._connect()
-                self.device_info = None # Re-fetch
+                self.device_info = None  # Re-fetch
 
             if self.device_info is None:
                 self.device_info = await self._try_poll(POLL_DEVINFO, parse_device_info)
@@ -105,7 +108,7 @@ class RedodoCoordinator(DataUpdateCoordinator[MPPTData]):
             return MPPTData.from_blocks(realtime_data, extra_data, config_data)
         except UpdateFailed:
             raise
-        except Exception as exc:
+        except (BleakError, ValueError) as exc:
             await self._disconnect()
             raise UpdateFailed(str(exc)) from exc
 

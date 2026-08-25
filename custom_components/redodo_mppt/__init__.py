@@ -35,7 +35,9 @@ async def async_unload_entry(hass, entry) -> bool:
     from .const import DOMAIN
     from .coordinator import RedodoCoordinator
 
-    unloaded = await hass.config_entries.async_unload_platforms(entry, [Platform.SENSOR])
+    unloaded = await hass.config_entries.async_unload_platforms(
+        entry, [Platform.SENSOR]
+    )
 
     if unloaded:
         coordinator: RedodoCoordinator = hass.data[DOMAIN].pop(entry.entry_id)

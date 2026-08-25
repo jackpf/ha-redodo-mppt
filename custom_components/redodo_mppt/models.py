@@ -17,34 +17,34 @@ class RealtimeData:
     """Live sensor readings from the primary POLL_REALTIME block (0x0101)."""
 
     soc: int
-    battery_voltage: float       # V (÷10)
-    charge_current: float        # A (÷100)
-    charge_power: int            # W
-    battery_temp_f: float        # °F (÷100)
-    pv_voltage: float            # V (÷10)
-    charge_max_power: int        # W, daily peak
-    daily_charge_wh: int         # Wh charged today
-    days_on: int                 # days controller has been on
-    total_charge_wh: int         # Wh charged lifetime
-    total_discharge_wh: int      # Wh discharged lifetime
+    battery_voltage: float  # V (÷10)
+    charge_current: float  # A (÷100)
+    charge_power: int  # W
+    battery_temp_f: float  # °F (÷100)
+    pv_voltage: float  # V (÷10)
+    charge_max_power: int  # W, daily peak
+    daily_charge_wh: int  # Wh charged today
+    days_on: int  # days controller has been on
+    total_charge_wh: int  # Wh charged lifetime
+    total_discharge_wh: int  # Wh discharged lifetime
 
 
 @dataclass
 class ExtraData:
     """Supplemental daily stats from the POLL_EXTRA block (0x0400)."""
 
-    daily_discharge_wh: int      # Wh discharged today
-    daily_batt_v_high: float     # V (÷10), highest today
-    daily_batt_v_low: float      # V (÷10), lowest today
+    daily_discharge_wh: int  # Wh discharged today
+    daily_batt_v_high: float  # V (÷10), highest today
+    daily_batt_v_low: float  # V (÷10), lowest today
 
 
 @dataclass
 class ConfigData:
     """Static configuration registers from the POLL_CONFIG block (0x0201)."""
 
-    absorption_voltage: float    # V (÷10)
-    float_voltage: float         # V (÷10)
-    max_charge_current: int      # A
+    absorption_voltage: float  # V (÷10)
+    float_voltage: float  # V (÷10)
+    max_charge_current: int  # A
 
 
 @dataclass

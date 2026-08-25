@@ -12,5 +12,6 @@
   "documentation": "https://github.com/jackpf/ha-redodo-mppt",
   "integration_type": "device",
   "iot_class": "local_polling",
-  "requirements": []
+  "requirements": [],
+  "version": "0.1.0"
 }

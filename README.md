@@ -1,5 +1,7 @@
 # Redodo MPPT — Home Assistant Integration
 
+[![Validate](https://github.com/jackpf/ha-redodo-mppt/actions/workflows/validate.yml/badge.svg)](https://github.com/jackpf/ha-redodo-mppt/actions/workflows/validate.yml)
+
 A custom Home Assistant integration for **Redodo MPPT charge controllers**, communicating over Bluetooth Low Energy using a reverse-engineered Modbus RTU protocol.
 
 > **Tested hardware:** Redodo RO-MPPTCC2440 (40A, 12/24V)

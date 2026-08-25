@@ -15,25 +15,27 @@ from .registers import (
     POLL_REALTIME_COUNT,
     REGISTER_MAP,
     REG_ABSORPTION_V,
-    REG_BATT_VOLTAGE,
-    REG_BATT_VOLTAGE2,
-    REG_TOTAL_DISCHARGE,
     REG_BATT_TEMP,
+    REG_BATT_VOLTAGE,
+    REG_CHARGE_AMOUNT,
+    REG_CHARGE_AMOUNT_CUMULATIVE,
+    REG_CHARGE_CURRENT,
+    REG_CHARGE_MAX_POWER,
+    REG_CHARGE_POWER,
+    REG_DAILY_BATT_V_HIGHEST,
+    REG_DAILY_BATT_V_LOWEST,
+    REG_DAILY_DISCHARGE_AMOUNT,
+    REG_DAYS_ON,
+    REG_DISCHARGE_AMOUNT_CUMULATIVE,
+    REG_FLOAT_V,
     REG_FW_VERSION,
     REG_HW_VERSION,
     REG_MAX_CHARGE_A,
     REG_MODEL_START,
-    REG_OUTPUT_V,
-    REG_PV_CURRENT,
-    REG_PV_CURRENT2,
     REG_PV_VOLTAGE,
-    REG_PV_VOLTAGE2,
     REG_RATED_A,
     REG_RATED_W,
     REG_SOC,
-    REG_TODAY_ENERGY,
-    REG_TOTAL_AH,
-    REG_FLOAT_V,
 )
 
 
@@ -99,20 +101,23 @@ def parse_realtime(payload: bytes) -> MPPTData:
     return MPPTData(
         soc=r(REG_SOC),
         battery_voltage=r(REG_BATT_VOLTAGE) / 10.0,
+        charge_current=r(REG_CHARGE_CURRENT) / 100.0,
+        charge_power=r(REG_CHARGE_POWER),
+        battery_temp_f=r(REG_BATT_TEMP) / 100.0,
         pv_voltage=r(REG_PV_VOLTAGE) / 10.0,
-        pv_current=r(REG_PV_CURRENT) / 100.0,
-        battery_temp=r(REG_BATT_TEMP),
-        today_energy=r(REG_TODAY_ENERGY),
-        total_ah=r(REG_TOTAL_AH),
-        total_discharge=r(REG_TOTAL_DISCHARGE),
+        charge_max_power=r(REG_CHARGE_MAX_POWER),
+        daily_charge_wh=r(REG_CHARGE_AMOUNT),
+        days_on=r(REG_DAYS_ON),
+        total_charge_wh=r(REG_CHARGE_AMOUNT_CUMULATIVE),
+        total_discharge_wh=r(REG_DISCHARGE_AMOUNT_CUMULATIVE),
     )
 
 
 def merge_extra(payload: bytes, data: MPPTData) -> MPPTData:
     """
     Decode the 5-register POLL_EXTRA response (0x0400 block) and merge into
-    an existing MPPTData. Battery voltage is updated from the confirmed register;
-    PV fields are updated only if the primary block left them as None.
+    an existing MPPTData. Only fields that have no equivalent in the primary
+    block are populated here: daily discharge, and daily min/max voltage.
     """
     regs = _unpack_registers(payload, POLL_EXTRA_COUNT)
     base = 0x0400
@@ -120,14 +125,9 @@ def merge_extra(payload: bytes, data: MPPTData) -> MPPTData:
     def r(addr: int) -> int:
         return regs[addr - base]
 
-    # 0x0403 is the confirmed battery voltage mirror — update unconditionally
-    data.battery_voltage = r(REG_BATT_VOLTAGE2) / 10.0
-
-    # Only fill PV fields if still unset (primary block takes priority)
-    if data.pv_voltage is None:
-        data.pv_voltage = r(REG_PV_VOLTAGE2) / 10.0
-    if data.pv_current is None:
-        data.pv_current = r(REG_PV_CURRENT2) / 100.0
+    data.daily_discharge_wh = r(REG_DAILY_DISCHARGE_AMOUNT)
+    data.daily_batt_v_high = r(REG_DAILY_BATT_V_HIGHEST) / 10.0
+    data.daily_batt_v_low = r(REG_DAILY_BATT_V_LOWEST) / 10.0
 
     return data
 

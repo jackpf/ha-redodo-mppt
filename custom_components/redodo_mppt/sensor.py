@@ -12,11 +12,19 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PERCENTAGE, UnitOfElectricPotential
+from homeassistant.const import PERCENTAGE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.const import (
+    UnitOfElectricCurrent,
+    UnitOfElectricPotential,
+    UnitOfEnergy,
+    UnitOfPower,
+    UnitOfTemperature,
+    UnitOfTime,
+)
 
 from .const import DOMAIN
 from .coordinator import RedodoCoordinator
@@ -31,6 +39,7 @@ class RedodoSensorDescription(SensorEntityDescription):
 
 
 SENSOR_DESCRIPTIONS: tuple[RedodoSensorDescription, ...] = (
+    # --- Live readings ---
     RedodoSensorDescription(
         key="battery_soc",
         name="Battery SOC",
@@ -47,6 +56,111 @@ SENSOR_DESCRIPTIONS: tuple[RedodoSensorDescription, ...] = (
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         suggested_display_precision=1,
         value_fn=lambda d: d.battery_voltage,
+    ),
+    RedodoSensorDescription(
+        key="pv_voltage",
+        name="PV Voltage",
+        device_class=SensorDeviceClass.VOLTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        suggested_display_precision=1,
+        value_fn=lambda d: d.pv_voltage,
+    ),
+    RedodoSensorDescription(
+        key="charge_current",
+        name="Charge Current",
+        device_class=SensorDeviceClass.CURRENT,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        suggested_display_precision=2,
+        value_fn=lambda d: d.charge_current,
+    ),
+    RedodoSensorDescription(
+        key="charge_power",
+        name="Charge Power",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfPower.WATT,
+        value_fn=lambda d: d.charge_power,
+    ),
+    RedodoSensorDescription(
+        key="battery_temp",
+        name="Battery Temperature",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfTemperature.FAHRENHEIT,
+        suggested_display_precision=1,
+        value_fn=lambda d: d.battery_temp_f,
+    ),
+
+    # --- Daily stats ---
+    RedodoSensorDescription(
+        key="daily_charge_wh",
+        name="Daily Charge",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
+        value_fn=lambda d: d.daily_charge_wh,
+    ),
+    RedodoSensorDescription(
+        key="daily_discharge_wh",
+        name="Daily Discharge",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
+        value_fn=lambda d: d.daily_discharge_wh,
+    ),
+    RedodoSensorDescription(
+        key="charge_max_power",
+        name="Daily Peak Charge Power",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfPower.WATT,
+        value_fn=lambda d: d.charge_max_power,
+    ),
+    RedodoSensorDescription(
+        key="daily_batt_v_high",
+        name="Daily High Voltage",
+        device_class=SensorDeviceClass.VOLTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        suggested_display_precision=1,
+        value_fn=lambda d: d.daily_batt_v_high,
+    ),
+    RedodoSensorDescription(
+        key="daily_batt_v_low",
+        name="Daily Low Voltage",
+        device_class=SensorDeviceClass.VOLTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        suggested_display_precision=1,
+        value_fn=lambda d: d.daily_batt_v_low,
+    ),
+
+    # --- Cumulative ---
+    RedodoSensorDescription(
+        key="total_charge_wh",
+        name="Total Charge",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
+        value_fn=lambda d: d.total_charge_wh,
+    ),
+    RedodoSensorDescription(
+        key="total_discharge_wh",
+        name="Total Discharge",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
+        value_fn=lambda d: d.total_discharge_wh,
+    ),
+    RedodoSensorDescription(
+        key="days_on",
+        name="Days On",
+        device_class=None,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        native_unit_of_measurement=UnitOfTime.DAYS,
+        value_fn=lambda d: d.days_on,
     ),
 )
 

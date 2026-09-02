@@ -66,8 +66,8 @@ SENSOR_DESCRIPTIONS: tuple[RedodoSensorDescription, ...] = (
         value_fn=lambda d: d.pv_voltage,
     ),
     RedodoSensorDescription(
-        key="charge_current",
-        name="Charge Current",
+        key="battery_current",
+        name="Battery Current",
         device_class=SensorDeviceClass.CURRENT,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
@@ -75,8 +75,8 @@ SENSOR_DESCRIPTIONS: tuple[RedodoSensorDescription, ...] = (
         value_fn=lambda d: d.charge_current,
     ),
     RedodoSensorDescription(
-        key="charge_power",
-        name="Charge Power",
+        key="solar_power",
+        name="Solar Power",
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfPower.WATT,
@@ -93,8 +93,8 @@ SENSOR_DESCRIPTIONS: tuple[RedodoSensorDescription, ...] = (
     ),
     # --- Daily stats ---
     RedodoSensorDescription(
-        key="daily_charge_wh",
-        name="Daily Charge",
+        key="yield_today",
+        name="Yield Today",
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,

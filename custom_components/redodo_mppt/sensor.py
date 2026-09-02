@@ -93,8 +93,8 @@ SENSOR_DESCRIPTIONS: tuple[RedodoSensorDescription, ...] = (
     ),
     # --- Daily stats ---
     RedodoSensorDescription(
-        key="yield_today",
-        name="Yield Today",
+        key="daily_charge_wh",
+        name="Daily Charge",
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,

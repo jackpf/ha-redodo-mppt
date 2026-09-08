@@ -89,9 +89,6 @@ class RedodoClient:
         try:
             return await asyncio.wait_for(self._queue.get(), timeout=RESPONSE_TIMEOUT)
         except asyncio.TimeoutError as exc:
-            # Disconnect immediately so any late-arriving response from this
-            # timed-out request cannot be dequeued by a future poll command.
-            await self.disconnect()
             raise TimeoutError(
                 f"No response from device within {RESPONSE_TIMEOUT}s"
             ) from exc

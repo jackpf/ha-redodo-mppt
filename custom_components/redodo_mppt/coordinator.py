@@ -76,12 +76,8 @@ class RedodoCoordinator(DataUpdateCoordinator[MPPTData]):
 
     async def _try_poll(
         self, command: bytes, parse_fn: Callable[[bytes], T]
-    ) -> T | None:
-        try:
-            return parse_fn(await self._client.poll(command))
-        except Exception as exc: # noqa: BLE001
-            _LOGGER.warning("Poll failed: %s", exc)
-            return None
+    ) -> T:
+        return parse_fn(await self._client.poll(command))
 
     # ------------------------------------------------------------------
     # DataUpdateCoordinator protocol
@@ -97,18 +93,11 @@ class RedodoCoordinator(DataUpdateCoordinator[MPPTData]):
                 self.device_info = await self._try_poll(POLL_DEVINFO, parse_device_info)
 
             realtime_data = await self._try_poll(POLL_REALTIME, parse_realtime)
-
-            # If primary poll fails, we stop
-            if realtime_data is None:
-                raise UpdateFailed("Poll failed")
-
             extra_data = await self._try_poll(POLL_EXTRA, parse_extra)
             config_data = await self._try_poll(POLL_CONFIG, parse_config)
 
             return MPPTData.from_blocks(realtime_data, extra_data, config_data)
-        except UpdateFailed:
-            raise
-        except (BleakError, ValueError) as exc:
+        except Exception as exc: # noqa: BLE001
             await self._disconnect()
             raise UpdateFailed(str(exc)) from exc
 

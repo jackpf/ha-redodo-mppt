@@ -97,7 +97,7 @@ class RedodoCoordinator(DataUpdateCoordinator[MPPTData]):
             config_data = await self._try_poll(POLL_CONFIG, parse_config)
 
             return MPPTData.from_blocks(realtime_data, extra_data, config_data)
-        except Exception as exc: # noqa: BLE001
+        except Exception as exc:
             await self._disconnect()
             raise UpdateFailed(str(exc)) from exc
 

@@ -16,6 +16,7 @@ import logging
 
 from bleak import BleakClient
 from bleak.backends.device import BLEDevice
+from bleak_retry_connector import establish_connection
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -37,10 +38,12 @@ class RedodoClient:
 
     async def connect(self) -> None:
         """Connect to the device and enable notifications."""
-        self._client = BleakClient(
-            self._device, disconnected_callback=self._on_disconnect
+        self._client = await establish_connection(
+            BleakClient,
+            self._device,
+            self._device.address,
+            disconnected_callback=self._on_disconnect,
         )
-        await self._client.connect()
         await self._client.start_notify(FFE1_UUID, self._on_notification)
         _LOGGER.debug("Connected to %s", self._device.address)
 
@@ -86,6 +89,9 @@ class RedodoClient:
         try:
             return await asyncio.wait_for(self._queue.get(), timeout=RESPONSE_TIMEOUT)
         except asyncio.TimeoutError as exc:
+            # Disconnect immediately so any late-arriving response from this
+            # timed-out request cannot be dequeued by a future poll command.
+            await self.disconnect()
             raise TimeoutError(
                 f"No response from device within {RESPONSE_TIMEOUT}s"
             ) from exc

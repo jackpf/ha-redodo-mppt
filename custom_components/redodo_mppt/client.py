@@ -45,7 +45,7 @@ class RedodoClient:
             disconnected_callback=self._on_disconnect,
         )
         await self._client.start_notify(FFE1_UUID, self._on_notification)
-        _LOGGER.debug("Connected to %s", self._device.address)
+        _LOGGER.debug("Connected to %s [MTU: %d]", self._device.address, self._client.mtu_size)
 
     async def disconnect(self) -> None:
         if self._client and self._client.is_connected:
@@ -62,8 +62,17 @@ class RedodoClient:
         self._client = None
 
     def _on_notification(self, handle: int, data: bytes) -> None:
-        _LOGGER.debug("← NTF (%d bytes): %s", len(data), data.hex())
         self._queue.put_nowait(data)
+        _LOGGER.debug("← NTF (%d bytes): %s  [queue depth: %d]", len(data), data.hex(), self._queue.qsize())
+
+    # Drain stale notifications (e.g. from a previous timed-out request)
+    def _drain_queue(self) -> None:
+        drained = 0
+        while not self._queue.empty():
+            self._queue.get_nowait()
+            drained += 1
+        if drained:
+            _LOGGER.warning("Drained %d stale notification(s)", drained)
 
     # ------------------------------------------------------------------
     # Low-level send/receive
@@ -79,15 +88,20 @@ class RedodoClient:
         if not self.is_connected:
             raise RuntimeError("Not connected")
 
-        # Drain stale notifications (e.g. from a previous timed-out request)
-        while not self._queue.empty():
-            self._queue.get_nowait()
+        self._drain_queue()
 
         _LOGGER.debug("→ CMD (%d bytes): %s", len(command), command.hex())
         await self._client.write_gatt_char(FFE1_UUID, command, response=False)
 
         try:
-            return await asyncio.wait_for(self._queue.get(), timeout=RESPONSE_TIMEOUT)
+            result = await asyncio.wait_for(self._queue.get(), timeout=RESPONSE_TIMEOUT)
+            # Wait and drain any duplicate messages after we receive
+            # This happens frequently due to this bug(s):
+            #   - https://github.com/hbldh/bleak/issues/83
+            #   - https://github.com/hbldh/bleak/issues/2002
+            await asyncio.sleep(0.05)
+            self._drain_queue()
+            return result
         except asyncio.TimeoutError as exc:
             raise TimeoutError(
                 f"No response from device within {RESPONSE_TIMEOUT}s"

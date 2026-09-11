@@ -57,8 +57,8 @@ SENSOR_DESCRIPTIONS: tuple[RedodoSensorDescription, ...] = (
         value_fn=lambda d: d.battery_voltage,
     ),
     RedodoSensorDescription(
-        key="pv_voltage",
-        name="PV Voltage",
+        key="solar_voltage",
+        name="Solar Voltage",
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,

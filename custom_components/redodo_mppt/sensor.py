@@ -63,7 +63,7 @@ SENSOR_DESCRIPTIONS: tuple[RedodoSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         suggested_display_precision=1,
-        value_fn=lambda d: d.pv_voltage,
+        value_fn=lambda d: d.solar_voltage,
     ),
     RedodoSensorDescription(
         key="battery_current",

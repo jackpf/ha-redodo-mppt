@@ -107,7 +107,7 @@ def parse_realtime(payload: bytes) -> RealtimeData:
         charge_current=r(REG_CHARGE_CURRENT) / 100.0,
         charge_power=r(REG_CHARGE_POWER),
         battery_temp_f=r(REG_BATT_TEMP) / 100.0,
-        pv_voltage=r(REG_PV_VOLTAGE) / 10.0,
+        solar_voltage=r(REG_PV_VOLTAGE) / 10.0,
         charge_max_power=r(REG_CHARGE_MAX_POWER),
         daily_charge_wh=r(REG_CHARGE_AMOUNT),
         days_on=r(REG_DAYS_ON),

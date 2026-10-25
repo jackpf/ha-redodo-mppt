@@ -70,7 +70,7 @@ class RedodoCoordinator(DataUpdateCoordinator[MPPTData]):
         if self._client:
             try:
                 await self._client.disconnect()
-            except BleakError as exc:
+            except Exception as exc:  # noqa: BLE001
                 _LOGGER.warning("Disconnect failed: %s", exc)
             self._client = None
 
@@ -97,6 +97,9 @@ class RedodoCoordinator(DataUpdateCoordinator[MPPTData]):
             config_data = await self._try_poll(POLL_CONFIG, parse_config)
 
             return MPPTData.from_blocks(realtime_data, extra_data, config_data)
+        except ValueError as exc:
+            # Malformed payload; the BLE link itself is fine, so keep it.
+            raise UpdateFailed(str(exc)) from exc
         except Exception as exc:
             await self._disconnect()
             raise UpdateFailed(str(exc)) from exc

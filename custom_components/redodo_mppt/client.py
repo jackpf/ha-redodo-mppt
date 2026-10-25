@@ -6,9 +6,10 @@ Protocol summary:
   - Characteristic: 0xFFE1 (Write Without Response + Notify)
   - Transport:  Modbus RTU frames sent as GATT WRITE_CMD, responses arrive
                 as HANDLE_VALUE_NTF on the same characteristic.
-  - Request/response correlation: implicit (one request in flight at a time).
-    An asyncio.Queue buffers incoming notifications; the caller awaits it
-    with a configurable timeout.
+  - Request/response correlation: one request in flight at a time. An
+    asyncio.Queue buffers incoming notifications; frames that aren't a valid
+    response to the in-flight request are discarded, since BlueZ can deliver
+    duplicate or stale notifications (see bleak issues #83, #2002).
 """
 
 import asyncio
@@ -17,6 +18,8 @@ import logging
 from bleak import BleakClient
 from bleak.backends.device import BLEDevice
 from bleak_retry_connector import establish_connection
+
+from .parser import is_response_to
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,10 +51,13 @@ class RedodoClient:
         _LOGGER.debug("Connected to %s [MTU: %d]", self._device.address, self._client.mtu_size)
 
     async def disconnect(self) -> None:
-        if self._client and self._client.is_connected:
-            await self._client.stop_notify(FFE1_UUID)
-            await self._client.disconnect()
-        self._client = None
+        client, self._client = self._client, None
+        if client and client.is_connected:
+            try:
+                await client.stop_notify(FFE1_UUID)
+            except Exception as exc:  # noqa: BLE001
+                _LOGGER.debug("stop_notify failed: %s", exc)
+            await client.disconnect()
 
     @property
     def is_connected(self) -> bool:
@@ -72,7 +78,7 @@ class RedodoClient:
             self._queue.get_nowait()
             drained += 1
         if drained:
-            _LOGGER.warning("Drained %d stale notification(s)", drained)
+            _LOGGER.debug("Drained %d stale notification(s)", drained)
 
     # ------------------------------------------------------------------
     # Low-level send/receive
@@ -82,8 +88,9 @@ class RedodoClient:
         """
         Write a Modbus command and return the raw notification response.
 
-        Drains any stale notifications before sending so we always get the
-        response that corresponds to this specific command.
+        Notifications that aren't a valid response to this command (e.g.
+        duplicates of an earlier response) are discarded until a matching
+        one arrives or the timeout expires.
         """
         if not self.is_connected:
             raise RuntimeError("Not connected")
@@ -93,18 +100,24 @@ class RedodoClient:
         _LOGGER.debug("→ CMD (%d bytes): %s", len(command), command.hex())
         await self._client.write_gatt_char(FFE1_UUID, command, response=False)
 
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + RESPONSE_TIMEOUT
+        discarded = 0
         try:
-            result = await asyncio.wait_for(self._queue.get(), timeout=RESPONSE_TIMEOUT)
-            # Wait and drain any duplicate messages after we receive
-            # This happens frequently due to this bug(s):
-            #   - https://github.com/hbldh/bleak/issues/83
-            #   - https://github.com/hbldh/bleak/issues/2002
-            await asyncio.sleep(0.05)
-            self._drain_queue()
-            return result
+            while True:
+                remaining = deadline - loop.time()
+                if remaining <= 0:
+                    raise asyncio.TimeoutError
+                frame = await asyncio.wait_for(self._queue.get(), timeout=remaining)
+                if is_response_to(command, frame):
+                    if discarded:
+                        _LOGGER.debug("Discarded %d non-matching notification(s)", discarded)
+                    return frame
+                discarded += 1
         except asyncio.TimeoutError as exc:
             raise TimeoutError(
-                f"No response from device within {RESPONSE_TIMEOUT}s"
+                f"No matching response from device within {RESPONSE_TIMEOUT}s"
+                f" ({discarded} non-matching notification(s) discarded)"
             ) from exc
 
     # ------------------------------------------------------------------

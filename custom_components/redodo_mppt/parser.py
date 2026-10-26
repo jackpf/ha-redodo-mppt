@@ -63,6 +63,9 @@ def is_response_to(command: bytes, payload: bytes) -> bool:
 
     Matches on slave address, function code, byte count (derived from the
     register count in the request) and CRC.
+
+    Note that this isn't perfect: we can mistakenly match a response to an incorrect command
+    if the response length happens to be the same as the correct response
     """
     expected_byte_count = struct.unpack_from(">H", command, 4)[0] * 2
     return (

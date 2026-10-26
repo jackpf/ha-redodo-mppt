@@ -57,6 +57,26 @@ def validate_crc(payload: bytes) -> bool:
     return _crc16(body) == stored
 
 
+def is_response_to(command: bytes, payload: bytes) -> bool:
+    """
+    Return True if payload is a valid FC03 response to the given FC03 request.
+
+    Matches on slave address, function code, byte count (derived from the
+    register count in the request) and CRC.
+
+    Note that this isn't perfect: we can mistakenly match a response to an incorrect command
+    if the response length happens to be the same as the correct response
+    """
+    expected_byte_count = struct.unpack_from(">H", command, 4)[0] * 2
+    return (
+        len(payload) == 3 + expected_byte_count + 2
+        and payload[0] == command[0]
+        and payload[1] == command[1]
+        and payload[2] == expected_byte_count
+        and validate_crc(payload)
+    )
+
+
 def _unpack_registers(payload: bytes, expected_count: int) -> list[int]:
     """
     Parse a Modbus FC03 response payload into a list of 16-bit register values.

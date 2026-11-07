@@ -20,7 +20,8 @@ class RealtimeData:
     battery_voltage: float  # V (÷10)
     charge_current: float  # A (÷100)
     charge_power: int  # W
-    battery_temp_f: float  # °F (÷100)
+    controller_temp_c: int  # °C, onboard sensor
+    battery_temp_c: int  # °C, external probe (fixed 25 without one)
     solar_voltage: float  # V (÷10)
     charge_max_power: int  # W, daily peak
     daily_charge_wh: int  # Wh charged today
@@ -61,7 +62,8 @@ class MPPTData:
     battery_voltage: float | None = None
     charge_current: float | None = None
     charge_power: int | None = None
-    battery_temp_f: float | None = None
+    controller_temp_c: int | None = None
+    battery_temp_c: int | None = None
     solar_voltage: float | None = None
     charge_max_power: int | None = None
     daily_charge_wh: int | None = None
@@ -92,7 +94,8 @@ class MPPTData:
             battery_voltage=realtime.battery_voltage if realtime else None,
             charge_current=realtime.charge_current if realtime else None,
             charge_power=realtime.charge_power if realtime else None,
-            battery_temp_f=realtime.battery_temp_f if realtime else None,
+            controller_temp_c=realtime.controller_temp_c if realtime else None,
+            battery_temp_c=realtime.battery_temp_c if realtime else None,
             solar_voltage=realtime.solar_voltage if realtime else None,
             charge_max_power=realtime.charge_max_power if realtime else None,
             daily_charge_wh=realtime.daily_charge_wh if realtime else None,

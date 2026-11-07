@@ -13,7 +13,7 @@ A custom Home Assistant integration for **Redodo MPPT charge controllers**, comm
 
 ## Features
 
-- 14 sensors exposed as native HA entities
+- 15 sensors exposed as native HA entities
 - Live readings updated every 30 seconds over BLE
 - Auto-reconnect on Bluetooth drop
 
@@ -25,7 +25,8 @@ A custom Home Assistant integration for **Redodo MPPT charge controllers**, comm
 | Battery Voltage | V |
 | Charge Current | A |
 | Charge Power | W |
-| Battery Temperature | °C |
+| Controller Temperature | °C |
+| Battery Temperature¹ | °C |
 | PV Voltage | V |
 | Daily Charge | Wh |
 | Daily Discharge | Wh |
@@ -35,6 +36,8 @@ A custom Home Assistant integration for **Redodo MPPT charge controllers**, comm
 | Total Charge | Wh |
 | Total Discharge | Wh |
 | Days On | days |
+
+¹ Disabled by default. Reads a fixed 25 °C unless an external battery temperature probe is connected.
 
 ---
 
@@ -82,7 +85,7 @@ All registers were reverse-engineered from Bluetooth snoop logs and confirmed by
 | 0x0102 | `REG_BATT_VOLTAGE` | Battery voltage | ÷10 V | ✅ |
 | 0x0103 | `REG_CHARGE_CURRENT` | Charge current | ÷100 A | ✅ |
 | 0x0104 | `REG_CHARGE_POWER` | Charge power | direct W | ✅ |
-| 0x0105 | `REG_BATT_TEMP` | Battery temperature | ÷100 °F | ✅ |
+| 0x0105 | `REG_TEMPS` | High byte: controller temperature, low byte: battery temperature | direct °C per byte, sign-magnitude (bit 7 = negative) | ✅ |
 | 0x0106 | `REG_UNK_106` | Unknown | — | ❓ always 0 |
 | 0x0107 | `REG_UNK_107` | Unknown | — | ❓ always 0 |
 | 0x0108 | `REG_UNK_108` | Unknown | — | ❓ always 0 |
@@ -136,10 +139,6 @@ All registers were reverse-engineered from Bluetooth snoop logs and confirmed by
 |---|---|---|---|
 | 0x0121 | `REG_STATUS_1` | Status / fault flags? | ❓ not decoded |
 | 0x0122 | `REG_STATUS_2` | Status / fault flags? | ❓ not decoded |
-
-### Known gaps
-
-- **MPPT controller temperature** — probed registers 0x0114–0x011A, all returned zero. Location unknown or not exposed over Modbus.
 
 ---
 

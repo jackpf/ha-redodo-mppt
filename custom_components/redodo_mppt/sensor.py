@@ -83,13 +83,22 @@ SENSOR_DESCRIPTIONS: tuple[RedodoSensorDescription, ...] = (
         value_fn=lambda d: d.charge_power,
     ),
     RedodoSensorDescription(
+        key="controller_temp",
+        name="Controller Temperature",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        value_fn=lambda d: d.controller_temp_c,
+    ),
+    # Reads a fixed 25°C unless an external battery temperature probe is fitted
+    RedodoSensorDescription(
         key="battery_temp",
         name="Battery Temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
-        native_unit_of_measurement=UnitOfTemperature.FAHRENHEIT,
-        suggested_display_precision=1,
-        value_fn=lambda d: d.battery_temp_f,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        entity_registry_enabled_default=False,
+        value_fn=lambda d: d.battery_temp_c,
     ),
     # --- Daily stats ---
     RedodoSensorDescription(

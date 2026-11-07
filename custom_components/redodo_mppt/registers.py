@@ -26,7 +26,8 @@ REG_BATT_VOLTAGE = 0x0102  # Battery voltage  — divide by 10 → V  (observed 
 
 REG_CHARGE_CURRENT = 0x0103  # Charge current ÷100 e.g. 457 = 4.57A
 REG_CHARGE_POWER = 0x0104  # Charge power e.g. 44 = 44W
-REG_BATT_TEMP = 0x0105  # Battery temperature e.g. 7961 = 79.61 degrees F
+REG_TEMPS = 0x0105  # High byte = controller °C, low byte = battery °C (sign-magnitude, bit 7 = negative)
+#                     e.g. 0x0F19 = controller 15°C, battery 25°C (battery reads fixed 25°C without a probe)
 REG_UNK_106 = 0x0106  # Unknown, always 0
 REG_UNK_107 = 0x0107  # Unknown, always 0
 REG_UNK_108 = 0x0108  # Unknown, always 0
@@ -43,7 +44,6 @@ REG_UNK_112 = 0x0112  # Unknown, always 0 (TODO: likely related to discharge)
 REG_DISCHARGE_AMOUNT_CUMULATIVE = (
     0x0113  # Cumulative total discharge amount, e.g. 398 -> 398Wh
 )
-# TODO: Poll past 0x0113 to maybe find mppt controller temp
 
 # ---------------------------------------------------------------------------
 # Real-time data — secondary poll block

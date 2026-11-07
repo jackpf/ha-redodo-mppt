@@ -14,7 +14,6 @@ from .registers import (
     POLL_EXTRA_COUNT,
     POLL_REALTIME_COUNT,
     REG_ABSORPTION_V,
-    REG_BATT_TEMP,
     REG_BATT_VOLTAGE,
     REG_CHARGE_AMOUNT,
     REG_CHARGE_AMOUNT_CUMULATIVE,
@@ -33,6 +32,7 @@ from .registers import (
     REG_MODEL_START,
     REG_PV_VOLTAGE,
     REG_SOC,
+    REG_TEMPS,
     REGISTER_MAP,
 )
 
@@ -47,6 +47,11 @@ def _crc16(data: bytes) -> int:
             else:
                 crc >>= 1
     return crc
+
+
+def _sign_magnitude_byte(b: int) -> int:
+    """Decode an 8-bit sign-magnitude value (bit 7 = negative)."""
+    return -(b & 0x7F) if b & 0x80 else b
 
 
 def validate_crc(payload: bytes) -> bool:
@@ -101,12 +106,15 @@ def parse_realtime(payload: bytes) -> RealtimeData:
     def r(addr: int) -> int:
         return regs[addr - base]
 
+    temps = r(REG_TEMPS)
+
     return RealtimeData(
         soc=r(REG_SOC),
         battery_voltage=r(REG_BATT_VOLTAGE) / 10.0,
         charge_current=r(REG_CHARGE_CURRENT) / 100.0,
         charge_power=r(REG_CHARGE_POWER),
-        battery_temp_f=r(REG_BATT_TEMP) / 100.0,
+        controller_temp_c=_sign_magnitude_byte(temps >> 8),
+        battery_temp_c=_sign_magnitude_byte(temps & 0xFF),
         solar_voltage=r(REG_PV_VOLTAGE) / 10.0,
         charge_max_power=r(REG_CHARGE_MAX_POWER),
         daily_charge_wh=r(REG_CHARGE_AMOUNT),

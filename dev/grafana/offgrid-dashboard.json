@@ -435,13 +435,13 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "homeassistant_sensor_temperature_celsius{job=\"$job\", entity=\"sensor.${mppt_device}_battery_temperature\"}",
+          "expr": "homeassistant_sensor_temperature_celsius{job=\"$job\", entity=\"sensor.${mppt_device}_controller_temperature\"}",
           "instant": true,
-          "legendFormat": "Battery Temp",
+          "legendFormat": "Controller Temp",
           "refId": "A"
         }
       ],
-      "title": "Battery Temp",
+      "title": "Controller Temp",
       "type": "stat"
     },
     {
